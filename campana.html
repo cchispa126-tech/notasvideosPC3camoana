@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>🔔 NOTIFICACIÓN ESP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Fondo que cubre toda la pantalla */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Tarjeta de notificación */
+        .card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            animation: slideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 500px;
+            width: 90%;
+            border: 2px solid #ff4757;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: scale(0.3) translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .campana {
+            font-size: 100px;
+            animation: ring 0.6s ease-in-out 4;
+            display: inline-block;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        }
+        
+        @keyframes ring {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(20deg) scale(1.1); }
+            50% { transform: rotate(-20deg) scale(1.1); }
+            75% { transform: rotate(10deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        
+        h1 {
+            color: #ff4757;
+            margin: 20px 0 10px;
+            font-size: 28px;
+            letter-spacing: 2px;
+        }
+        
+        .mensaje {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            color: #fff;
+            font-size: 18px;
+            word-wrap: break-word;
+            border-left: 4px solid #ff4757;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4757, #ff6b81);
+            width: 100%;
+            animation: shrink 4s linear forwards;
+        }
+        
+        @keyframes shrink {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        
+        .timer {
+            color: #aaa;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .timer span {
+            color: #ff4757;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .btn-cerrar {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        .btn-cerrar:hover {
+            background: #ff6b81;
+            transform: scale(1.05);
+        }
+        
+        .sound-wave {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin: 15px 0;
+        }
+        
+        .wave {
+            width: 4px;
+            height: 15px;
+            background: #ff4757;
+            border-radius: 2px;
+            animation: waveAnim 0.5s ease infinite;
+        }
+        
+        .wave:nth-child(1) { animation-delay: 0s; }
+        .wave:nth-child(2) { animation-delay: 0.1s; }
+        .wave:nth-child(3) { animation-delay: 0.2s; }
+        .wave:nth-child(4) { animation-delay: 0.3s; }
+        .wave:nth-child(5) { animation-delay: 0.4s; }
+        
+        @keyframes waveAnim {
+            0%, 100% { height: 8px; }
+            50% { height: 25px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay">
+        <div class="card">
+            <div class="campana">🔔</div>
+            <h1>⚠️ NUEVO MENSAJE</h1>
+            <div class="mensaje" id="mensaje">Cargando...</div>
+            <div class="sound-wave">
+                <div class="wave"></div>
+                <div class="wave"></div>
+                <div class="wave"></div>
+                <div class="wave"></div>
+                <div class="wave"></div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="timer">
+                Cerrando en <span id="contador">4</span> segundos...
+            </div>
+            <button class="btn-cerrar" onclick="cerrarNotificacion()">✖ Cerrar ahora</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== SONIDO BEEP MÁS LARGO ==========
+        function reproducirBeep() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 880;
+                gainNode.gain.value = 0.4;
+                
+                oscillator.start();
+                
+                // Subir frecuencia gradualmente
+                const startTime = audioContext.currentTime;
+                const endTime = startTime + 0.8;
+                
+                function updateFreq() {
+                    const now = audioContext.currentTime;
+                    if (now < endTime) {
+                        const progress = (now - startTime) / 0.8;
+                        oscillator.frequency.value = 880 + (progress * 400);
+                        requestAnimationFrame(updateFreq);
+                    }
+                }
+                updateFreq();
+                
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, endTime);
+                oscillator.stop(endTime);
+                
+                // Segundo beep
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.value = 1200;
+                    gain2.gain.value = 0.3;
+                    osc2.start();
+                    gain2.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                    osc2.stop(audioContext.currentTime + 0.3);
+                }, 400);
+                
+                audioContext.resume();
+            } catch(e) {
+                console.log("Error de audio:", e);
+            }
+        }
+        
+        // ========== CERRAR NOTIFICACIÓN ==========
+        function cerrarNotificacion() {
+            const overlay = document.getElementById('overlay');
+            if (overlay) {
+                overlay.style.animation = "fadeOut 0.2s ease-out";
+                setTimeout(() => {
+                    window.close();
+                }, 200);
+            }
+        }
+        
+        // ========== LEER MENSAJE DE LA URL ==========
+        function obtenerMensaje() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let mensaje = urlParams.get('mensaje');
+            if (mensaje) {
+                document.getElementById('mensaje').innerHTML = decodeURIComponent(mensaje);
+            } else {
+                document.getElementById('mensaje').innerHTML = "📨 Nuevo mensaje recibido";
+            }
+        }
+        
+        // ========== CONTADOR 4 SEGUNDOS ==========
+        let segundos = 4;
+        const contadorElement = document.getElementById('contador');
+        
+        const intervalo = setInterval(() => {
+            segundos--;
+            if (contadorElement) {
+                contadorElement.textContent = segundos;
+            }
+            if (segundos <= 0) {
+                clearInterval(intervalo);
+                cerrarNotificacion();
+            }
+        }, 1000);
+        
+        // ========== EJECUTAR ==========
+        reproducirBeep();
+        obtenerMensaje();
+        
+        // Forzar que la ventana esté al frente
+        window.focus();
+        
+        // Vibrar si es posible
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
+        
+        // Animación de fadeOut
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
